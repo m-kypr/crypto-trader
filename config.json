@@ -1,0 +1,7 @@
+{
+    "symbols": ["BTC"],
+    "c_short": 10,
+    "c_long": 0,
+    "fee": 0.1,
+    "pause": 3
+}
