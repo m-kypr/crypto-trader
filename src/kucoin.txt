@@ -1,8 +1,0 @@
-key passphrase
-9K?hab%gRNYX#hPS?Dk&zR5V?F9*f#DA
-secret
-9a1fa3cf-3f37-4124-b568-18202e4ed514
-key
-5eb3c92ad2520f0008051bd5
-trading password
-229433

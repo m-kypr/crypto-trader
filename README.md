@@ -1,34 +1,46 @@
-# CRYPTO TRADER V1
+# **CRYPTO TRADER V1**
 
-## The API:
+## **API Docs**
 
 - https://docs.kucoin.com
 
-## Algorithmic Trading:
+<br>
+
+## **Algorithmic Trading**
 
 - https://en.wikipedia.org/wiki/Algorithmic_trading
 - https://www.investopedia.com/articles/active-trading/101014/basics-algorithmic-trading-concepts-and-examples.asp
 
-## Trading Strategies:
+<br>
 
-- Strategy of moving averages:
+## **Trading Strategies**
 
-  moving average of 20/30/40...
+### **Strategy of moving averages**
 
-  -> DROPS BELOW the moving average of 100/200/300 => BUY
+short moving average (sMA)...
 
-  -> RISES ABOVE the moving average of 100/200/300 => SELL
+- DROPS BELOW the long moving average (lMA) => BUY
 
-## Installation:
+- RISES ABOVE the lMA => SELL
 
-### Requirements:
+Problems with this strategy:
+
+- Short jumps may cause intersection of sMA and lMA -> Almost no profit
+- **High Fees** (Currently: 0.1) are bad for short time trading
+  => Solution: Trading API with low fees
+
+<br>
+
+## **Installation**
+
+### Requirements
 
 - [Python 3.6](python.org) or higher
 
-### Instructions:
+### Instructions
 
 ```bash
-$ git clone rep
+$ git clone git@github.com:m-kypr/crypto-trader.git
 ```
 
 Go to https://www.kucoin.com/ and get your API keys and paste them in [credentials.json](credentials.json)
