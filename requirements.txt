@@ -1,1 +1,4 @@
 ccxt
+matplotlib
+pandas
+scipy
