@@ -16,6 +16,9 @@ from kucoin_api import KAPI, SYMBOLS
 from abc import ABC
 
 
+APP_PATH = os.path.dirname(os.path.abspath(__file__))
+
+
 class JsonSerializable(ABC):
     def __repr__(self):
         return json.dumps(self.__dict__)
@@ -54,19 +57,24 @@ class KTrader():
     """
 
     def __init__(self, demo):
+        self.config_path = APP_PATH + '/../../config.json'
+        self.positions_path = APP_PATH + '/../../positions.json'
+        self.log_path = APP_PATH + '/../log'
+        self.trades_log = self.log_path + '/trades.log'
+        self.profit_log = self.log_path + '/profit.log'
+
         self.load_config()
+
         self.demo = demo
-        self.positions = '../positions.json'
-        self.trades_log = '../log/trades.log'
         self.proc = []
-        self.api = KAPI()
+        self.api = KAPI(APP_PATH + '/../../credentials.json')
 
         self.handle_argv()
 
         self.deploy_dogs()
 
     def load_config(self):
-        config = json.loads(open('../../config.json', 'r').read())
+        config = json.loads(open(self.config_path, 'r').read())
         self.symbols = config['symbols']
         self.c_short = config['c_short']
         if config['c_long'] == 0:
@@ -92,7 +100,7 @@ class KTrader():
         """Clear the contents of log/
         """
         import glob
-        for f in glob.glob('logs/*'):
+        for f in glob.glob(self.log_path + '/*'):
             os.remove(f)
 
     def watchdog(self, symbol, pid):
@@ -103,8 +111,7 @@ class KTrader():
             pid (int): process id
         """
         stop = False
-        log = '../log/wd' + str(pid) + '.log'
-        trades = 'trades.tmp'
+        log = self.log_path + '/wd' + str(pid) + '.log'
 
         def print(s, end='\n'):
             open(log,
@@ -113,80 +120,83 @@ class KTrader():
         def printtrade(trade):
             open(self.trades_log, 'a').write(str(trade))
 
-        def sell(symbol):
+        def sell():
             """Sell.
 
             Args:
                 symbol (string): Crypto symbol to watch i.e "BTC"
             """
-            f = self.positions
-            if os.path.isfile(f) and os.stat(f).st_size != 0:
-                f = json.loads(open(f, 'r').read())
-                for pos in f['positions']:
-                    if pos['symbol'] == symbol:
-                        amount = pos['amount']
-                        nprice = self.api.fetch_price(symbol)
-                        price = pos['price']
-                        namount = (amount * (1 - self.fee) *
-                                   (1 - self.fee) * nprice) / price
-                        profit = namount - amount
-                        if profit > 0:
-                            print('Selling!')
-                            if self.demo is False:
-                                self.api.create_market_sell_order(
-                                    symbol, amount)
-                            open(self.trades, 'a').write(
-                                str(Trade('SELL', symbol, price)))
-                            f['positions'].remove(pos)
-                            # del pos['positions'][i]
-                            open(f, 'w').write(json.dumps(f))
+            with open(self.positions_path, 'r+') as f:
+                posjson = json.loads(f.read())
+                if 'positions' in posjson:
+                    for pos in posjson['positions']:
+                        if pos['symbol'] == symbol:
+                            amount = pos['amount']
+                            nprice = self.api.fetch_price(symbol)
+                            price = pos['price']
+                            namount = (amount * (1 - self.fee) *
+                                       (1 - self.fee) * nprice) / price
+                            profit = namount - amount
+                            if profit > 0:
+                                open(self.profit_log, 'a').write(
+                                    '\n'+str(profit))
+                                print('Selling at '+str(nprice))
+                                if self.demo is False:
+                                    self.api.create_market_sell_order(
+                                        symbol, amount)
+                                open(self.trades_log, 'a').write('\n' +
+                                                                 str(Trade('SELL', symbol, nprice)))
+                                posjson['positions'].remove(pos)
+                                f.seek(0)
+                                f.write(json.dumps(posjson))
+                                f.truncate()
 
-        def buy(symbol, amount='all'):
+        def buy(amount='all'):
             """Buy.
 
             Args:
                 symbol (string): Crypto symbol to watch i.e "BTC"
                 amount (float, optional): Amount of $ to buy with. Defaults to 'all'.
             """
-            f = self.positions
-            if os.path.isfile(f) and os.stat(f).st_size != 0:
-                pos = json.loads(open(f, 'r').read())
-                if symbol not in [x['symbol'] for x in f['positions']]:
-                    if amount == 'all':
-                        amount = self.api.fetch_free_balance()
-                    if amount > 0:
-                        price = self.api.fetch_price(symbol)
-                        print('Buying!')
-                        # if not self.demo:
-                        #     self.api.create_market_buy_order(symbol, amount)
-                        printtrade(Trade('BUY', symbol, price))
-                        open(f, 'w').write(
-                            json.dumps({
-                                'positions': [{
-                                    'symbol': symbol,
-                                    'amount': amount * (1 - self.fee),
-                                    't': time.time(),
-                                    'price': price
-                                }]
-                            }))
+            with open(self.positions_path, 'r+') as f:
+                posjson = json.loads(f.read())
+                if 'positions' in posjson:
+                    if symbol not in [x['symbol'] for x in posjson['positions']]:
+                        pass
+                    else:
+                        return
+                else:
+                    posjson['positions'] = []
+                if amount == 'all':
+                    amount = self.api.fetch_free_balance()
+                if amount > 0:
+                    price = self.api.fetch_price(symbol)
+                    print('Buying at '+str(price))
+                    # if not self.demo:
+                    # self.api.create_market_buy_order(symbol, amount)
+                    printtrade(Trade('BUY', symbol, price))
+                    posjson['positions'].append({
+                        'symbol': symbol,
+                        'amount': amount * (1 - self.fee),
+                        't': time.time(),
+                        'price': price
+                    })
+                    f.seek(0)
+                    f.write(json.dumps(posjson))
+                    f.truncate()
 
         print('Watching ' + symbol)
         c_buf = self.api.fetch_candles(symbol + '-USDT')['data'][:3]
         while not stop:
-            live = self.live_data(symbol)
+            live = self.api.fetch_ticker(symbol)
             c_buf.append([int(live['time']/1000), float(live['price'])])
             x, _, iss, _, _, = self.calc(c_buf)
-            print(iss[-1].type)
-            print(iss[-1].x)
-            if iss[-1].x > x[-1] - 60 * 4:
+            if iss[-1].x > x[-1] - 60 * 3:
                 if iss[-1].type == 'ro':
-                    sell(symbol)
+                    sell()
                 else:
-                    buy(symbol)
+                    buy()
             time.sleep(self.pause)
-
-    def noop(self, *args):
-        print(*args)
 
     def deploy_dogs(self, symbols=[]):
         if not symbols:
@@ -216,11 +226,8 @@ class KTrader():
             iss.append(isn)
         return x, y, iss, mas, mal
 
-    def live_data(self, symbol):
-        return self.api.fetch_ticker(symbol)
-
     def animate(self, i, symbol, c_buf, g, s, l, gop, rop):
-        live = self.live_data(symbol)
+        live = self.api.fetch_ticker(symbol)
         c_buf.append([int(live['time']/1000), float(live['price'])])
         x, y, iss, mas, mal = self.calc(c_buf)
         g.set_data(x, y)
@@ -231,7 +238,7 @@ class KTrader():
         gop.set_data([i.x for i in go], [i.y for i in go])
         rop.set_data([i.x for i in ro], [i.y for i in ro])
 
-    def plot3(self, symbol):
+    def plot(self, symbol):
         c_buf = self.api.fetch_candles(symbol + '-USDT')['data'][:3]
         c_buf.reverse()
         x, y, iss, mas, mal = self.calc(c_buf)
@@ -254,7 +261,7 @@ class KTrader():
         plt.show()
 
     def hairy_plotter(self, symbols=[]):
-        self.plot3('BTC')
+        self.plot('BTC')
 
     def plot_bondaries(self, symbol):
         try:

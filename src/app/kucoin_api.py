@@ -39,8 +39,8 @@ class KAPI(kucoin):
         kucoin (object): cctx API
     """
 
-    def __init__(self):
-        CREDENTIALS = json.loads(open('../../credentials.json', 'r').read())
+    def __init__(self, credentials_path):
+        CREDENTIALS = json.loads(open(credentials_path, 'r').read())
         if not CREDENTIALS['apiKey']:
             CREDENTIALS['apiKey'] = input('apiKey: ')
         elif not CREDENTIALS['secret']:

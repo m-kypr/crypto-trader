@@ -1,5 +1,7 @@
 # **CRYPTO TRADER V1**
 
+<br>
+
 ## **API Docs**
 
 - https://docs.kucoin.com
