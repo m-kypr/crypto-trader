@@ -16,7 +16,7 @@ from kucoin_api import KAPI, SYMBOLS
 from abc import ABC
 
 
-APP_PATH = os.path.dirname(os.path.abspath(__file__))
+PATH = os.path.dirname(os.path.abspath(__file__))
 
 
 class JsonSerializable(ABC):
@@ -57,9 +57,9 @@ class KTrader():
     """
 
     def __init__(self, demo):
-        self.config_path = APP_PATH + '/../../config.json'
-        self.positions_path = APP_PATH + '/../../positions.json'
-        self.log_path = APP_PATH + '/../log'
+        self.config_path = PATH + '/config.json'
+        self.positions_path = PATH + '../positions.json'
+        self.log_path = PATH + '/log'
         self.trades_log = self.log_path + '/trades.log'
         self.profit_log = self.log_path + '/profit.log'
 
@@ -67,7 +67,7 @@ class KTrader():
 
         self.demo = demo
         self.proc = []
-        self.api = KAPI(APP_PATH + '/../../credentials.json')
+        self.api = KAPI(PATH + '/credentials.json')
 
         self.handle_argv()
 
@@ -76,12 +76,17 @@ class KTrader():
     def load_config(self):
         config = json.loads(open(self.config_path, 'r').read())
         self.symbols = config['symbols']
+        self.fee = config['fee']
         self.c_short = config['c_short']
+        if config['c_short'] == 0:
+            from math import e
+            self.c_short = int(round(self.fee*((e)*10000)))
+        else:
+            self.c_short = config['c_short']
         if config['c_long'] == 0:
             self.c_long = self.c_short * 2
         else:
             self.c_long = config['c_long']
-        self.fee = config['fee']
         self.pause = config['pause']
 
     def handle_argv(self):
@@ -120,6 +125,9 @@ class KTrader():
         def printtrade(trade):
             open(self.trades_log, 'a').write(str(trade))
 
+        def printprofit(profit):
+            open(self.profit_log, 'a').write(str(profit) + '\n')
+
         def sell():
             """Sell.
 
@@ -131,21 +139,19 @@ class KTrader():
                 if 'positions' in posjson:
                     for pos in posjson['positions']:
                         if pos['symbol'] == symbol:
+                            price = pos['price']
                             amount = pos['amount']
                             nprice = self.api.fetch_price(symbol)
-                            price = pos['price']
                             namount = (amount * (1 - self.fee) *
                                        (1 - self.fee) * nprice) / price
                             profit = namount - amount
                             if profit > 0:
-                                open(self.profit_log, 'a').write(
-                                    '\n'+str(profit))
                                 print('Selling at '+str(nprice))
                                 if self.demo is False:
                                     self.api.create_market_sell_order(
                                         symbol, amount)
-                                open(self.trades_log, 'a').write('\n' +
-                                                                 str(Trade('SELL', symbol, nprice)))
+                                printtrade(Trade('S', symbol, nprice))
+                                printprofit(profit)
                                 posjson['positions'].remove(pos)
                                 f.seek(0)
                                 f.write(json.dumps(posjson))
@@ -186,12 +192,12 @@ class KTrader():
                     f.truncate()
 
         print('Watching ' + symbol)
-        c_buf = self.api.fetch_candles(symbol + '-USDT')['data'][:3]
+        c_buf = self.api.fetch_candles(symbol + '-USDT')['data'][:11]
         while not stop:
             live = self.api.fetch_ticker(symbol)
             c_buf.append([int(live['time']/1000), float(live['price'])])
             x, _, iss, _, _, = self.calc(c_buf)
-            if iss[-1].x > x[-1] - 60 * 3:
+            if iss[-1].x > x[-1] - 60 * 3 and len(iss) > 2:
                 if iss[-1].type == 'ro':
                     sell()
                 else:
@@ -239,7 +245,7 @@ class KTrader():
         rop.set_data([i.x for i in ro], [i.y for i in ro])
 
     def plot(self, symbol):
-        c_buf = self.api.fetch_candles(symbol + '-USDT')['data'][:3]
+        c_buf = self.api.fetch_candles(symbol + '-USDT')['data'][:11]
         c_buf.reverse()
         x, y, iss, mas, mal = self.calc(c_buf)
         figure, ax = plt.subplots()
@@ -256,7 +262,7 @@ class KTrader():
         plt.legend()
         plt.title(symbol+'-USDT')
         ani = FuncAnimation(plt.gcf(), self.animate, fargs=(
-            symbol, c_buf, g, s, l, gop, rop), interval=3000)
+            symbol, c_buf, g, s, l, gop, rop), interval=5 * 1000)
         plt.tight_layout()
         plt.show()
 

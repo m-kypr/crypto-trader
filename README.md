@@ -45,7 +45,7 @@ Problems with this strategy:
 $ git clone git@github.com:m-kypr/crypto-trader.git
 ```
 
-Go to https://www.kucoin.com/ and get your API keys and paste them in [credentials.json](credentials.json)
+Go to https://www.kucoin.com/ and get your API keys and paste them in [credentials.json](src/credentials.json)
 
 ```bash
 $ pip install -r requirements.txt
