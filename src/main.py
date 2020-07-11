@@ -70,8 +70,11 @@ class KTrader():
         self.deploy_dogs()
 
     def initfiles(self):
-        os.mkdir(self.log_path)
-        open(self.positions_path, 'w+') 
+        try:
+            os.mkdir(self.log_path)
+            open(self.positions_path, 'w+')
+        except Exception as e:
+            pass
 
     def load_config(self):
         config = json.loads(open(self.config_path, 'r').read())
