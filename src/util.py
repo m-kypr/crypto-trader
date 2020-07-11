@@ -1,6 +1,5 @@
 import numpy as np
-import pandas as pd
-from scipy.signal import argrelextrema
+from pandas import DataFrame
 
 
 class Util():
@@ -13,25 +12,25 @@ class Util():
 
     @classmethod
     def ema(cls, values, window):
-        df = pd.DataFrame({'v': values})
+        df = DataFrame({'v': values})
         return df.ewm(span=window).mean()
 
-    @classmethod
-    def lowest(cls, n, max_buf):
-        if n > 0:
-            b = []
-            for i in argrelextrema(np.array(max_buf), np.less)[0].tolist():
-                b.append(max_buf[i])
-            return Util.lowest(n - 1, max_buf=b)
-        else:
-            return max_buf
+    # @classmethod
+    # def lowest(cls, n, max_buf):
+    #     if n > 0:
+    #         b = []
+    #         for i in argrelextrema(np.array(max_buf), np.less)[0].tolist():
+    #             b.append(max_buf[i])
+    #         return Util.lowest(n - 1, max_buf=b)
+    #     else:
+    #         return max_buf
 
-    @classmethod
-    def greatest(cls, n, max_buf):
-        if n > 0:
-            b = []
-            for i in argrelextrema(np.array(max_buf), np.greater)[0].tolist():
-                b.append(max_buf[i])
-            return Util.greatest(n - 1, max_buf=b)
-        else:
-            return max_buf
+    # @classmethod
+    # def greatest(cls, n, max_buf):
+    #     if n > 0:
+    #         b = []
+    #         for i in argrelextrema(np.array(max_buf), np.greater)[0].tolist():
+    #             b.append(max_buf[i])
+    #         return Util.greatest(n - 1, max_buf=b)
+    #     else:
+    #         return max_buf

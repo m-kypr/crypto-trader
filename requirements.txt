@@ -1,4 +1,6 @@
 ccxt
 matplotlib
 pandas
-scipy
+numpy
+# scipy
+# coinmarketcap

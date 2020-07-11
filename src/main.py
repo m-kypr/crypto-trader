@@ -1,19 +1,16 @@
-from multiprocessing import Process
-from threading import Thread
-import matplotlib
-import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation
-import numpy as np
-import pandas as pd
+import os
+import sys
 import time
 import json
-import os
-import datetime
-import sys
 import shutil
+import datetime
+from threading import Thread
+from matplotlib.animation import FuncAnimation
 from util import Util
 from kucoin_api import KAPI, SYMBOLS
 from abc import ABC
+import matplotlib.pyplot as plt
+import numpy as np
 
 
 PATH = os.path.dirname(os.path.abspath(__file__))
@@ -22,6 +19,10 @@ PATH = os.path.dirname(os.path.abspath(__file__))
 class JsonSerializable(ABC):
     def __repr__(self):
         return json.dumps(self.__dict__)
+
+    @staticmethod
+    def deserialize(s):
+        return json.loads(s)
 
 
 class T(JsonSerializable, ABC):
@@ -44,12 +45,6 @@ class Trade(T):
         super().__init__(symbol, price, time)
 
 
-class Position(T):
-    def __init__(self, amount, symbol, price, time):
-        self.amount = amount
-        super().__init__(symbol, price, time)
-
-
 class KTrader():
     """Kucoin API algorithmic Trader 
     DOCS: https://docs.kucoin.com/#general
@@ -58,12 +53,13 @@ class KTrader():
 
     def __init__(self, demo):
         self.config_path = PATH + '/config.json'
-        self.positions_path = PATH + '../positions.json'
+        self.positions_path = PATH + '/../positions.json'
         self.log_path = PATH + '/log'
         self.trades_log = self.log_path + '/trades.log'
         self.profit_log = self.log_path + '/profit.log'
 
         self.load_config()
+        self.initfiles()
 
         self.demo = demo
         self.proc = []
@@ -72,6 +68,10 @@ class KTrader():
         self.handle_argv()
 
         self.deploy_dogs()
+
+    def initfiles(self):
+        os.mkdir(self.log_path)
+        open(self.positions_path, 'w+') 
 
     def load_config(self):
         config = json.loads(open(self.config_path, 'r').read())
@@ -123,7 +123,7 @@ class KTrader():
                  'a').write(str(datetime.datetime.now()) + ' ' + str(s) + end)
 
         def printtrade(trade):
-            open(self.trades_log, 'a').write(str(trade))
+            open(self.trades_log, 'a').write(str(trade) + '\n')
 
         def printprofit(profit):
             open(self.profit_log, 'a').write(str(profit) + '\n')
@@ -142,15 +142,15 @@ class KTrader():
                             price = pos['price']
                             amount = pos['amount']
                             nprice = self.api.fetch_price(symbol)
-                            namount = (amount * (1 - self.fee) *
-                                       (1 - self.fee) * nprice) / price
+                            namount = (amount / price) * \
+                                nprice * (1 - self.fee)
                             profit = namount - amount
                             if profit > 0:
                                 print('Selling at '+str(nprice))
-                                if self.demo is False:
-                                    self.api.create_market_sell_order(
-                                        symbol, amount)
-                                printtrade(Trade('S', symbol, nprice))
+                                # if self.demo is False:
+                                #     self.api.create_market_sell_order(
+                                #         symbol, amount)
+                                printtrade(Trade('SELL', symbol, nprice))
                                 printprofit(profit)
                                 posjson['positions'].remove(pos)
                                 f.seek(0)
@@ -167,9 +167,8 @@ class KTrader():
             with open(self.positions_path, 'r+') as f:
                 posjson = json.loads(f.read())
                 if 'positions' in posjson:
-                    if symbol not in [x['symbol'] for x in posjson['positions']]:
-                        pass
-                    else:
+                    if symbol in [x['symbol'] for x in posjson['positions']]:
+                        # print('Already bought')
                         return
                 else:
                     posjson['positions'] = []
@@ -182,9 +181,9 @@ class KTrader():
                     # self.api.create_market_buy_order(symbol, amount)
                     printtrade(Trade('BUY', symbol, price))
                     posjson['positions'].append({
-                        'symbol': symbol,
                         'amount': amount * (1 - self.fee),
-                        't': time.time(),
+                        'symbol': symbol,
+                        'time': time.time(),
                         'price': price
                     })
                     f.seek(0)
@@ -198,6 +197,7 @@ class KTrader():
             c_buf.append([int(live['time']/1000), float(live['price'])])
             x, _, iss, _, _, = self.calc(c_buf)
             if iss[-1].x > x[-1] - 60 * 3 and len(iss) > 2:
+                # print(iss[-1].type)
                 if iss[-1].type == 'ro':
                     sell()
                 else:
@@ -303,6 +303,7 @@ class KTrader():
 
 def main():
     KTrader(demo=True)
+    # CATrader()
 
     # TODO:Implement other APIs?
 
