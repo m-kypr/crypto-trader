@@ -2,22 +2,20 @@
 
 <br>
 
-## **API Docs**
-
-- https://docs.kucoin.com
-
-<br>
-
-## **Algorithmic Trading**
+## ***Algorithmic Trading***
 
 - https://en.wikipedia.org/wiki/Algorithmic_trading
 - https://www.investopedia.com/articles/active-trading/101014/basics-algorithmic-trading-concepts-and-examples.asp
 
 <br>
 
-## **Trading Strategies**
+## ***Strategies***
 
-### **Strategy of moving averages**
+### **Trend-following Strategies**
+
+#### --- Moving averages ---
+
+https://www.investopedia.com/articles/active-trading/052014/how-use-moving-average-buy-stocks.asp
 
 short moving average (sMA)...
 
@@ -28,12 +26,20 @@ short moving average (sMA)...
 Problems with this strategy:
 
 - Short jumps may cause intersection of sMA and lMA -> Almost no profit
-- **High Fees** (Currently: 0.1) are bad for short time trading
+- **High Fees** (Currently: 0.1%) are bad for short time trading
   => Solution: Trading API with low fees
+
+#### --- Heikin-Ashi & StochRSI ---
+
+> Got it somewhere from reddit
+
+### **AI Trading**
+
+> Jk. lol
 
 <br>
 
-## **Installation**
+## ***Installation***
 
 ### Requirements
 
@@ -51,3 +57,10 @@ Go to https://www.kucoin.com/ and get your API keys and paste them in [credentia
 $ pip install -r requirements.txt
 $ python src/main.py
 ```
+
+### Notes for DEV:
+
+TODO:
+
+- Implement Heikin-Ashi
+- Implement RSI & StochRSI

@@ -2,6 +2,7 @@ import json
 import uuid
 from ccxt.kucoin import kucoin
 from ccxt.base.errors import BadRequest
+from .api import API
 
 STABLE_COINS = ['USDC', 'TUSD', 'USDT', 'TRX', 'DAI', 'KCS', 'PAX']
 NOT_PROVIDED = [
@@ -32,11 +33,8 @@ SYMBOLS = [
 ]
 
 
-class KAPI(kucoin):
+class KucoinAPI(kucoin):
     """Improvements and extensions to the cctx library
-
-    Args:
-        kucoin (object): cctx API
     """
 
     def __init__(self, credentials_path):
@@ -86,7 +84,7 @@ class KAPI(kucoin):
             if x['type'] == 'trade' and x['currency'] in STABLE_COINS
         ])
 
-    def fetch_candles(self, symbol, startAt=0, endAt=0, type='1min'):
+    def fetch_klines(self, symbol, startAt=0, endAt=0, type='1min'):
         """Fetch candles.
 
         Args:
