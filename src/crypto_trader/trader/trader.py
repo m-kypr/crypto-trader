@@ -5,10 +5,13 @@ import json
 import shutil
 import datetime
 import numpy as np
+import pandas as pd
+from math import pi
+import mplfinance as mpl
 from threading import Thread
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
-from .util import Math, Trade, Candlestick, Intersection
+from .util import MyDataFrame
 
 
 class Trader():
@@ -16,7 +19,7 @@ class Trader():
     Originally developed by: https://github.com/m-kypr
     """
 
-    def __init__(self, api, config_path='config.json', positions_path='positions.json', log_path='log', demo=True):
+    def __init__(self, api, credentials={}, config_path='config.json', positions_path='positions.json', log_path='log', demo=True):
         self.demo = demo
 
         # Constants
@@ -28,7 +31,7 @@ class Trader():
         self.profit_log = os.path.join(self.log_path, 'profit.log')
 
         # Callable objects
-        self.api = api
+        self.api = api(credentials)
         self.proc = []
 
         self.load_config()
@@ -38,7 +41,6 @@ class Trader():
 
     def load_config(self):
         self.config = json.loads(open(self.config_path, 'r').read())
-        self.pause = self.config['pause']
         self.fee = self.config['fee']
 
     def initfiles(self):
@@ -78,32 +80,101 @@ class Trader():
         print('Spawned ' + symbol + ' dog')
         print('View logs: log/wd'+str(len(self.proc)-1)+'.log')
 
-    def calc(self, css):
+    def calc(self, css, rsi='sma', stoch=False, period=14, stoch_smoothness=0):
         x = np.array([cs.time for cs in css])
         y = np.array([cs.open for cs in css])
-        return x, y
+        if rsi:
+            if rsi is 'sma' or 'ema':
+                x = x[1:]
+                y = y[1:]
+                if stoch:
+                    StochRSI, StochRSIK, StochRSID = Math.StochRSI(
+                        css, mode=rsi, period=period)
+                    if stoch_smoothness == 1:
+                        StochRSI = StochRSIK
+                    elif stoch_smoothness == 2:
+                        StochRSI = StochRSID
+                    return x, y, StochRSI
+                else:
+                    RSI = Math.RSI(css, mode=rsi, period=period)
+                    return x, y, RSI
+        return x, y, _
 
-    def animate(self, _, g, css, symbol, interval, *args):
+    def animate(self, _, g, rsi_g, css, symbol, interval, rsi_mode, stoch, stoch_smoothness, *args):
         css.append([self.candlestick_from_json(c) for c in json.loads(
             self.api.fetch_klines(symbol, interval))][-1])
-        x, y = self.calc(css)
+        if stoch:
+            x, y, StochRSI = self.calc(
+                css, rsi=rsi_mode, stoch=True, stoch_smoothness=stoch_smoothness)
+            rsi_g.set_data(x, StochRSI)
+        else:
+            x, y, RSI = self.calc(css, rsi=rsi_mode)
+            rsi_g.set_data(x, RSI)
         g.set_data(x, y)
 
-    def plotS(self, symbol, interval):
-        css = [self.candlestick_from_json(c) for c in json.loads(
-            self.api.fetch_klines(symbol, interval))]
-        x, y = self.calc(css)
-        figure, ax = plt.subplots()
-        g, = ax.plot(x, y, color='black', label='price')
-        ax.set_ylim(y[0], y[-1] * 1.2)
-        ax.set_xlim(x[0], x[-1] * 1.02)
-        ax.grid()
-        plt.legend()
-        plt.title(symbol)
-        ani = FuncAnimation(plt.gcf(), self.animate,
-                            fargs=(g, css, symbol, interval, ), interval=5 * 1000)
-        plt.tight_layout()
-        plt.show()
+    def plotS(self, symbol, interval, do_ha=True, rsi_mode='ema', stoch=True, stoch_smoothness=2):
+        pause = int(self.api.interval_to_millis(interval))
+        # fig, (ax1, ax2) = plt.subplots(nrows=2, sharex=True)
+        df = MyDataFrame(self.api.fetch_klines_as_dataframe(
+            symbol, interval, 100))
+        df.index = pd.to_datetime(df[self.api.headers[0]], unit='ms')
+        # print(mpl.available_styles())
+        df.calculate(do_ha=False)
+        apds = [
+            mpl.make_addplot(df['RSI_14'], panel=1)
+        ]
+
+        def watcher(self):
+            while True:
+                ndf = MyDataFrame(
+                    self.api.fetch_klines_as_dataframe(symbol, interval, 1))
+                if ndf[self.api.headers[0]].iloc[0] >= df[self.api.headers[0]].iloc[-1] + pause:
+                    ndf.calculate(do_ha=do_ha)
+                    print()
+                    df.loc[len(df)] = ndf.iloc[0].values
+                    df.index = pd.to_datetime(
+                        df[self.api.headers[0]], unit='ms')
+                    df.calculate(do_ha=False)
+                    print(df)
+                    if self.demo:
+                        print('Updating')
+                time.sleep(pause / 1000)
+        t = Thread(target=watcher, args=(self, ))
+        t.start()
+        mpl.plot(df, type='candle', style='binance', mav=(
+            3, 6, 9), volume=True, addplot=apds)
+        t.join()
+        quit()
+        # if stoch:
+        #     x, y, StochRSI = self.calc(
+        #         css, rsi=rsi_mode, stoch=True, stoch_smoothness=stoch_smoothness)
+        #     rsi_g, = ax2.plot(
+        #         x, StochRSI[0], color='blue', label='StochRSI via ' + rsi_mode)
+        #     # print(StochRSI[0])
+        #     overbought = StochRSI[StochRSI[0] > 0.8]
+        #     oversold = StochRSI[StochRSI[0] < 0.2]
+        #     print(overbought.shape)
+        #     print(oversold.shape)
+        # else:
+        #     x, y, RSI = self.calc(css, rsi=rsi_mode)
+        #     rsi_g, = ax2.plot(x, RSI[0], color='blue',
+        #                       label='RSI via ' + rsi_mode)
+        # g, = ax1.plot(x, y, color='black', label='price')
+        # # go = [x for x in iss if x.type == 'go']
+        # # ro = [x for x in iss if x.type == 'ro']
+        # # gop, = ax.plot([i.x for i in go], [i.y for i in go], 'go')
+        # ax1.set_ylim(min(y) * 0.8, max(y) * 1.2)
+        # ax1.set_xlim(x[0], x[-1] + pause / pi)
+        # ax1.grid()
+        # ax2.grid()
+        # ax1.legend()
+        # ax2.legend()
+        # ax1.set_title(symbol)
+        # ax2.set_title('Analytics')
+        # ani = FuncAnimation(plt.gcf(), self.animate, fargs=(g, rsi_g, css, symbol, interval, rsi_mode,
+        #                                                     stoch, stoch_smoothness, ), interval=pause)
+        # plt.tight_layout()
+        # plt.show()
 
     def watchdog(self, symbol, interval, pid):
         """Watches.
@@ -114,6 +185,7 @@ class Trader():
         """
         stop = False
         log = self.log_path + '/wd' + str(pid) + '.log'
+        pause = int(self.api.interval_to_millis(interval) / 1000)
 
         def print(s, end='\n'):
             open(log,
@@ -179,6 +251,7 @@ class Trader():
                 symbol, interval, limit=1))[-1])
             if cs.time > css[-1].time:
                 css.append(cs)
+                self.calc(css)
                 # x, y = self.calc(css)
                 # if iss[-1].x > x[-1] - 60 * 3 and len(iss) > 2:
                 #     if iss[-1].type == 'ro':
@@ -186,17 +259,7 @@ class Trader():
                 #     else:
                 #         buy()
                 buy(10)
-            time.sleep(self.pause)
-
-    def deploy_dogs(self, symbols):
-        for sym in symbols:
-            self.proc.append(
-                Thread(target=self.watchdog, args=(sym, len(self.proc))))
-            self.proc[-1].start()
-        print('Spawning ' + str(len(self.proc)) + ' dogs')
-        print('View logs: log/wd<pid>.log')
-        for p in self.proc:
-            p.join()
+            time.sleep(pause)
 
 
 # class KTrader():

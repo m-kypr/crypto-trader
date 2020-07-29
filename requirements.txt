@@ -2,5 +2,6 @@ ccxt
 matplotlib
 pandas
 numpy
+mplfinance
 # scipy
 # coinmarketcap
