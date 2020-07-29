@@ -17,6 +17,7 @@ from .util import MyDataFrame
 class Trader():
     """Algorithmic Trading class
     Originally developed by: https://github.com/m-kypr
+
     """
 
     def __init__(self, api, credentials={}, config_path='config.json', positions_path='positions.json', log_path='log', demo=True):
@@ -36,8 +37,6 @@ class Trader():
 
         self.load_config()
         self.initfiles()
-        self.handle_argv()
-        self.trade()
 
     def load_config(self):
         self.config = json.loads(open(self.config_path, 'r').read())
@@ -56,22 +55,28 @@ class Trader():
             with open(self.positions_path, 'a+') as f:
                 f.write('{}')
 
-    def handle_argv(self):
-        if len(sys.argv) > 1:
-            if sys.argv[1] == 'plot':
-                self.plot()
-            # if sys.argv[1] == 'clearlogs':
-            #     self.clearlogs()
-            quit()
-
     def plot(self):
-        pass
+        raise NotImplementedError
 
     def trade(self):
-        pass
+        raise NotImplementedError
 
     def candlestick_from_json(self, json):
-        pass
+        raise NotImplementedError
+
+    def reset(self):
+        raise NotImplementedError
+
+    def clearlogs(self):
+        for filename in os.listdir(self.log_path):
+            file_path = os.path.join(self.log_path, filename)
+            try:
+                if os.path.isfile(file_path) or os.path.islink(file_path):
+                    os.unlink(file_path)
+                elif os.path.isdir(file_path):
+                    shutil.rmtree(file_path)
+            except Exception as e:
+                print('Failed to delete %s. Reason: %s' % (file_path, e))
 
     def tradeS(self, symbol, interval):
         self.proc.append(Thread(target=self.watchdog,
@@ -144,37 +149,6 @@ class Trader():
         mpl.plot(df, type='candle', style='binance', mav=(
             3, 6, 9), volume=True, addplot=apds)
         t.join()
-        quit()
-        # if stoch:
-        #     x, y, StochRSI = self.calc(
-        #         css, rsi=rsi_mode, stoch=True, stoch_smoothness=stoch_smoothness)
-        #     rsi_g, = ax2.plot(
-        #         x, StochRSI[0], color='blue', label='StochRSI via ' + rsi_mode)
-        #     # print(StochRSI[0])
-        #     overbought = StochRSI[StochRSI[0] > 0.8]
-        #     oversold = StochRSI[StochRSI[0] < 0.2]
-        #     print(overbought.shape)
-        #     print(oversold.shape)
-        # else:
-        #     x, y, RSI = self.calc(css, rsi=rsi_mode)
-        #     rsi_g, = ax2.plot(x, RSI[0], color='blue',
-        #                       label='RSI via ' + rsi_mode)
-        # g, = ax1.plot(x, y, color='black', label='price')
-        # # go = [x for x in iss if x.type == 'go']
-        # # ro = [x for x in iss if x.type == 'ro']
-        # # gop, = ax.plot([i.x for i in go], [i.y for i in go], 'go')
-        # ax1.set_ylim(min(y) * 0.8, max(y) * 1.2)
-        # ax1.set_xlim(x[0], x[-1] + pause / pi)
-        # ax1.grid()
-        # ax2.grid()
-        # ax1.legend()
-        # ax2.legend()
-        # ax1.set_title(symbol)
-        # ax2.set_title('Analytics')
-        # ani = FuncAnimation(plt.gcf(), self.animate, fargs=(g, rsi_g, css, symbol, interval, rsi_mode,
-        #                                                     stoch, stoch_smoothness, ), interval=pause)
-        # plt.tight_layout()
-        # plt.show()
 
     def watchdog(self, symbol, interval, pid):
         """Watches.

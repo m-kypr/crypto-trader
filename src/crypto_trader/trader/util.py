@@ -19,6 +19,8 @@ class MyDataFrame(DataFrame, JsonSerializable):
     Thanks to https://github.com/arkochhar/Technical-Indicators/blob/master/indicator/indicators.py
     For the indicators
 
+    Orignally developed by https://github.com/m-kypr
+    
     """
 
     def __init__(self, data=None, index=None, columns=None, dtype=None, copy=False):

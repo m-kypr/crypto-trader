@@ -13,3 +13,6 @@ class BinanceTrader(Trader):
 
     def trade(self):
         self.tradeS('BTCUSDT', '1m')
+
+    def reset(self):
+        self.clearlogs()

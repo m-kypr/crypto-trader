@@ -9,14 +9,9 @@ class API():
         self.intervals = intervals
         self.headers = headers
 
-    def fetch(self):
-        raise NotImplementedError
-
-    def fetch_price(self):
-        raise NotImplementedError
-
-    def fetch_klines(self, *args):
-        raise NotImplementedError
+    def fetch(self, url, method='GET', headers=None, params=None, body=None):
+        return self.session.request(
+            method=method, url=self.endpoint + url, params=params, data=body)
 
     def interval_to_millis(self, interval):
         interval = list(interval)
@@ -47,3 +42,9 @@ class API():
 
     def fetch_klines_as_dataframe(self, *args):
         return self.dataframe_from_klines(self.fetch_klines(*args))
+
+    def fetch_price(self):
+        raise NotImplementedError
+
+    def fetch_klines(self, *args):
+        raise NotImplementedError
