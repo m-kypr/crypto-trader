@@ -1,0 +1,9 @@
+*.egg-info
+*.py[co]
+src/log/
+env/
+.env/
+.kucoin.txt
+.vscode/
+positions.json
+*.tmp
