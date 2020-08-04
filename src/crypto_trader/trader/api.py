@@ -70,7 +70,7 @@ class API():
                 col.astype(float)
             except (ValueError, TypeError) as e:
                 try:
-                    if col.dtype == pandas.DataFrame.dtypes
+                    # if col.dtype == pandas.DataFrame.dtypes
                     if not col.dt.tz:
                         #     col = pandas.DatetimeIndex(col.index)
                         col.tz_localize('UTC')
